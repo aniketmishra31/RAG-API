@@ -1,0 +1,10 @@
+google-generativeai==0.2.0
+Flask==2.3.2
+python-dotenv==1.0.0
+sentence-transformers==2.2.2
+transformers==4.23.1
+huggingface-hub==0.23.2
+tokenizers==0.13.3
+chromadb==0.3.22
+numpy==1.24.0
+pydantic==1.10.2
