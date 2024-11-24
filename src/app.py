@@ -1,6 +1,6 @@
 from flask import Flask, request, jsonify
 from dotenv import load_dotenv
-from rag import extract_text_from_pdf,chunk_text,embed_chunks,store_embeddings_in_chroma,retrieve_relevant_chunks,generate_response
+from rag import extract_text_from_pdf,chunk_text,embed_chunks,store_embeddings,retrieve_relevant_chunks,generate_response
 import io
 import os
 
@@ -31,21 +31,21 @@ def upload_and_load():
         
         chunks=chunk_text(text)
         embeddings=embed_chunks(chunks)
+        embeddings_list=embeddings.tolist()
+        pdf_id=store_embeddings(embeddings_list,chunks)
         
-        collection_name=store_embeddings_in_chroma(embeddings,chunks)
-        
-        return jsonify({"collection_name": collection_name,"message":"File embedded successfully"}), 201
+        return jsonify({"pdf_id": pdf_id,"message":"File embedded successfully"}), 201
     except Exception as e:
-        return jsonify({"error": e}) , 500
+        return jsonify({"error": str(e)}) , 500
     
 @app.route("/ask-pdf",methods=['POST'])
 def rag_generate():
     try:
         query=request.json.get('query')
-        collection_name=request.headers.get('X-Collection')
+        pdf_id=request.headers.get('X-Pdf')
         
-        if not collection_name:
-            return jsonify({"error": "Collection header missing"}) , 403
+        if not pdf_id:
+            return jsonify({"error": "Pdf_id header missing"}) , 403
         if not query:
             return jsonify({"error": "No query found in body"}) , 400
         
@@ -54,7 +54,7 @@ def rag_generate():
         if not api_key:
             return jsonify({"error": "No API key found"}), 403
         
-        context=retrieve_relevant_chunks(query=query,collection_name=collection_name)
+        context=retrieve_relevant_chunks(query=query,pdf_id=pdf_id)
         response=generate_response(query=query,context=context,API_KEY=api_key)
         
         if len(response)==0:

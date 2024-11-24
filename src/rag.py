@@ -1,11 +1,14 @@
 from datetime import datetime
 import PyPDF2
 from sentence_transformers import SentenceTransformer
+from db import db
 import google.generativeai as genai
 import numpy as np
 import io
-import chromadb
+import os
 import uuid
+import requests
+import json
 
 model = SentenceTransformer('all-MiniLM-L6-v2')
 client = chromadb.Client()
@@ -29,37 +32,38 @@ def embed_chunks(chunks):
     embeddings = model.encode(chunks)  
     return embeddings
 
-def create_collection(client):
+def create_pdf_id(client):
     pdf_id = str(uuid.uuid4())[:8]
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    collection_name = f"pdf_{pdf_id}_{timestamp}"
-    try:
-        collection = client.get_or_create_collection(collection_name)
-    except Exception as e:
-        print(f"Error creating or connecting to collection: {e}")
-        collection = client.create_collection(collection_name)
-    return collection_name,pdf_id
+    return pdf_id
     
-def store_embeddings_in_chroma(embeddings, chunks):
-    collection_name , pdf_id = create_collection(client)
-    ids = [str(i) for i in range(len(chunks))]  # Generate unique IDs for each chunk
-    collection=client.get_or_create_collection(name=collection_name)
-    collection.add(
-        documents=chunks,
-        metadatas=[{"pdf_id": pdf_id}] * len(chunks),
-        ids=ids,
-        embeddings=embeddings
-    )
-    return collection_name
-def retrieve_relevant_chunks(query, collection_name, top_k=3):
-    query_embedding = model.encode([query])
-    collection=client.get_collection(collection_name)
-    results = collection.query(
-        query_embeddings=query_embedding,
-        n_results=top_k
-    )
-    documents = [item for sublist in results['documents'] for item in sublist]  # Flatten the list
-    return documents
+def store_embeddings(embeddings_list, chunks):
+    pdf_id = create_pdf_id(client)
+    for embedding, chunk in zip(embeddings_list, chunks):
+        response = db.table("embeddings").insert({
+            "embedding": embedding,
+            "metadata": pdf_id,
+            "documents": chunk
+        }).execute()
+    return pdf_id
+
+def retrieve_relevant_chunks(query, pdf_id, top_k=3):
+    try:
+        query_embedding = model.encode([query])
+        query_list = query_embedding.tolist()[0]  # Extract the vector as a list
+
+        query_embedding_str = str(query_list).replace('[', '{').replace(']', '}')
+        response=db.rpc("sim_search",{
+            "query_embedding": query_embedding_str,
+            "pdf_id_param" : pdf_id,
+            "top_k":top_k
+        }).execute()
+
+        if not response.data:
+            raise Exception("No results found.")
+        relevant_chunks = [row['documents'] for row in response.data]
+        return relevant_chunks
+    except Exception as e:
+        raise Exception({"error": str(e)})
 
 def generate_response(query,context,API_KEY):
     genai.configure(api_key=str(API_KEY))
