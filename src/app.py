@@ -1,6 +1,6 @@
 from flask import Flask, request, jsonify
 from dotenv import load_dotenv
-from rag import extract_text_from_pdf,chunk_text,embed_chunks,store_embeddings,retrieve_relevant_chunks,generate_response
+from rag import saveToDB,extract_text_from_pdf,chunk_text,embed_chunks,store_embeddings,retrieve_relevant_chunks,generate_response
 import io
 import os
 
@@ -16,6 +16,10 @@ def allowed_file(filename):
 @app.route('/upload-pdf', methods=['POST'])
 def upload_and_load():
     try:
+        user_id = request.form.get('user_id')
+        if not user_id:
+            return jsonify({"error": "Missing user_id in form data"}), 400
+        
         if 'file' not in request.files:
             return jsonify({"error": "No file part"}) , 400
 
@@ -29,12 +33,14 @@ def upload_and_load():
         pdf_file=io.BytesIO(file.read())
         text=extract_text_from_pdf(pdf_file)
         
+        saveToDB(text,user_id)
+        
         chunks=chunk_text(text)
         embeddings=embed_chunks(chunks)
         embeddings_list=embeddings.tolist()
         pdf_id=store_embeddings(embeddings_list,chunks)
         
-        return jsonify({"pdf_id": pdf_id,"message":"File embedded successfully"}), 201
+        return jsonify({"pdf_id": str(pdf_id),"message":"File embedded successfully"}), 201
     except Exception as e:
         return jsonify({"error": str(e)}) , 500
     

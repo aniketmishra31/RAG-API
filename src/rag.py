@@ -11,7 +11,6 @@ import requests
 import json
 
 model = SentenceTransformer('all-MiniLM-L6-v2')
-client = chromadb.Client()
 
 def extract_text_from_pdf(pdf_file):
     reader = PyPDF2.PdfReader(pdf_file)
@@ -32,12 +31,12 @@ def embed_chunks(chunks):
     embeddings = model.encode(chunks)  
     return embeddings
 
-def create_pdf_id(client):
+def create_pdf_id():
     pdf_id = str(uuid.uuid4())[:8]
     return pdf_id
     
 def store_embeddings(embeddings_list, chunks):
-    pdf_id = create_pdf_id(client)
+    pdf_id = create_pdf_id()
     for embedding, chunk in zip(embeddings_list, chunks):
         response = db.table("embeddings").insert({
             "embedding": embedding,
@@ -72,5 +71,15 @@ def generate_response(query,context,API_KEY):
     context = " ".join(context)  # Ensure context is a string
     prompt = f"User query: {query}\nContext: {context}\nAnswer:"
     
-    response = model.generate_content(prompt)
+    response = model.generate_content(prompt) 
     return response.text
+
+def saveToDB(text,user_id):
+    try:
+        data={
+            "text":text,
+            "user_id": user_id
+        }
+        response=db.table("documents").insert(data).execute()
+    except Exception as e:
+        raise Exception({"error": str(e)})
