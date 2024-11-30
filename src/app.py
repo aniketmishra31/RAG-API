@@ -1,4 +1,5 @@
 from flask import Flask, request, jsonify
+from flask_cors import CORS
 from dotenv import load_dotenv
 from rag import saveToDB,extract_text_from_pdf,chunk_text,embed_chunks,store_embeddings,retrieve_relevant_chunks,generate_response
 import io
@@ -7,6 +8,7 @@ import os
 load_dotenv()
 
 app = Flask(__name__)
+CORS(app)
 
 app.config['ALLOWED_EXTENSIONS']={'pdf'}
 
@@ -17,6 +19,7 @@ def allowed_file(filename):
 def upload_and_load():
     try:
         user_id = request.form.get('user_id')
+        title = request.form.get('title')
         if not user_id:
             return jsonify({"error": "Missing user_id in form data"}), 400
         
@@ -33,7 +36,7 @@ def upload_and_load():
         pdf_file=io.BytesIO(file.read())
         text=extract_text_from_pdf(pdf_file)
         
-        saveToDB(text,user_id)
+        saveToDB(text,user_id,title)
         
         chunks=chunk_text(text)
         embeddings=embed_chunks(chunks)

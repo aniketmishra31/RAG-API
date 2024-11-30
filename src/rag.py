@@ -74,11 +74,12 @@ def generate_response(query,context,API_KEY):
     response = model.generate_content(prompt) 
     return response.text
 
-def saveToDB(text,user_id):
+def saveToDB(text,user_id,title):
     try:
         data={
             "text":text,
-            "user_id": user_id
+            "user_id": user_id,
+            "title": title
         }
         response=db.table("documents").insert(data).execute()
     except Exception as e:
