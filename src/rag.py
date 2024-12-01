@@ -94,3 +94,14 @@ def saveToDB(text, user_id, title):
             raise Exception("No document found with the provided user_id.")
     except Exception as e:
         raise Exception({"error": str(e)})
+    
+def checkApiKey(doc_id,api_key):
+    try:
+        res=db.table("documents").select("api_key").eq("id",doc_id).execute()
+        if res.data:
+            key=res.data[-1]["api_key"]
+            return (key==api_key)
+        else:
+            raise Exception("Could not get document from doc_id")
+    except Exception as e:
+        raise Exception({error: str(e)})

@@ -1,7 +1,7 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from dotenv import load_dotenv
-from rag import saveToDB,extract_text_from_pdf,chunk_text,embed_chunks,store_embeddings,retrieve_relevant_chunks,generate_response
+from rag import checkApiKey,saveToDB,extract_text_from_pdf,chunk_text,embed_chunks,store_embeddings,retrieve_relevant_chunks,generate_response
 import io
 import os
 
@@ -47,19 +47,24 @@ def upload_and_load():
     except Exception as e:
         return jsonify({"error": str(e)}) , 500
     
-@app.route("/ask-pdf",methods=['POST'])
-def rag_generate():
+@app.route("/ask-pdf/<string:doc_id>/<string:pdf_id>",methods=['POST'])
+def rag_generate(doc_id,pdf_id):
     try:
         query=request.json.get('query')
-        pdf_id=request.headers.get('X-Pdf')
+        ask_pdf_api_key=request.headers.get('X-apiKey')
         
-        if not pdf_id:
-            return jsonify({"error": "Pdf_id header missing"}) , 403
         if not query:
             return jsonify({"error": "No query found in body"}) , 400
+        if not ask_pdf_api_key:
+            return jsonify({"error": "No API key found in request"}) , 400
         
         api_key = os.getenv("API_KEY")
-
+        
+        match=checkApiKey(doc_id=doc_id,api_key=ask_pdf_api_key)
+        
+        if match==False:
+            return jsonify({"error": "Invalid API key in headers"}), 403
+        
         if not api_key:
             return jsonify({"error": "No API key found"}), 403
         
