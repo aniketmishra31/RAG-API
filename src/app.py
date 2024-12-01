@@ -36,12 +36,12 @@ def upload_and_load():
         pdf_file=io.BytesIO(file.read())
         text=extract_text_from_pdf(pdf_file)
         
-        saveToDB(text,user_id,title)
+        document_id=saveToDB(text,user_id,title)
         
         chunks=chunk_text(text)
         embeddings=embed_chunks(chunks)
         embeddings_list=embeddings.tolist()
-        pdf_id=store_embeddings(embeddings_list,chunks)
+        pdf_id=store_embeddings(embeddings_list,chunks,document_id)
         
         return jsonify({"pdf_id": str(pdf_id),"message":"File embedded successfully"}), 201
     except Exception as e:

@@ -35,20 +35,21 @@ def create_pdf_id():
     pdf_id = str(uuid.uuid4())[:8]
     return pdf_id
     
-def store_embeddings(embeddings_list, chunks):
+def store_embeddings(embeddings_list, chunks,document_id):
     pdf_id = create_pdf_id()
     for embedding, chunk in zip(embeddings_list, chunks):
         response = db.table("embeddings").insert({
             "embedding": embedding,
             "metadata": pdf_id,
-            "documents": chunk
+            "documents": chunk,
+            "document_id": document_id
         }).execute()
     return pdf_id
 
 def retrieve_relevant_chunks(query, pdf_id, top_k=3):
     try:
         query_embedding = model.encode([query])
-        query_list = query_embedding.tolist()[0]  # Extract the vector as a list
+        query_list = query_embedding.tolist()[0]
 
         query_embedding_str = str(query_list).replace('[', '{').replace(']', '}')
         response=db.rpc("sim_search",{
@@ -74,13 +75,22 @@ def generate_response(query,context,API_KEY):
     response = model.generate_content(prompt) 
     return response.text
 
-def saveToDB(text,user_id,title):
+def saveToDB(text, user_id, title):
     try:
-        data={
-            "text":text,
+        data = {
+            "text": text,
             "user_id": user_id,
             "title": title
         }
-        response=db.table("documents").insert(data).execute()
+        
+        response = db.table("documents").insert(data).execute()
+        
+        res = db.table("documents").select("id").eq("user_id", user_id).execute()
+        
+        if res.data:
+            document_id = res.data[-1]["id"]
+            return document_id
+        else:
+            raise Exception("No document found with the provided user_id.")
     except Exception as e:
         raise Exception({"error": str(e)})
