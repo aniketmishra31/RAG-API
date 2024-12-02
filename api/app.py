@@ -8,7 +8,11 @@ import os
 load_dotenv()
 
 app = Flask(__name__)
-CORS(app)
+
+CORS(app, resources={r"/*": {"origins": "https://rag-liard.vercel.app"}}, 
+     methods=["GET", "POST", "PUT", "PATCH", "DELETE"], 
+     allow_headers=["Content-Type", "Authorization", "X-apiKey"],
+     supports_credentials=True)
 
 app.config['ALLOWED_EXTENSIONS']={'pdf'}
 
