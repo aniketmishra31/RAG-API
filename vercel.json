@@ -4,8 +4,8 @@
     {
       "src": "api/app.py",
       "use": "@vercel/python",
-      "config":{
-        "pythonVersion": "3.11.0"
+      "config": {
+        "runtime": "python3.11"
       }
     }
   ],
